@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+**/Data
+/Data
+**/Data/
+/Data/
+**/Data/*
+Data/nov11P2-PVP-mtl/
+Out
+Out/
