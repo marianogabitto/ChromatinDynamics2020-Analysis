@@ -212,4 +212,73 @@ seltf['E18'] = dedf['E18'][(abs(dedf['E18'].logfoldchanges)<=.25) &
 
 
 
+out_reg_s = {}
+tp = set([x.split('_')[0] for x in f_grns_s])
+for t in tp:
+    report = {}
+    network_a, network_b = [x for x in f_grns_s.keys() if t == x.split('_')[0]]
+    networks = [network_a, network_b]
+    cell_type_a, cell_type_b = [x.split('_')[1] for x in networks]
+    f_net_a  = f_grns_s[network_a]
+    f_net_b  = f_grns_s[network_b]
+    for regulator in set(set(f_net_a.regulator) | set(f_net_b.regulator)):
+        n=0
+        edge_id = []
+        if regulator in f_net_a.regulator.values:
+            n = f_net_a.regulator.value_counts()[regulator]
+            edge_id = list(f_net_a[f_net_a.regulator==regulator].id.values)
+        report[regulator] = {cell_type_a:{'n':n,'edge_id':edge_id}}
+        n=0
+        edge_id = []
+        if regulator in f_net_b.regulator.values:
+            n = f_net_b.regulator.value_counts()[regulator]
+            edge_id = list(f_net_b[f_net_b.regulator==regulator].id.values)
+
+        report[regulator][cell_type_b] = {'n': n , 'edge_id':edge_id}
+        
+        s_edges = set(report[regulator][cell_type_b]['edge_id']) & set(report[regulator][cell_type_a]['edge_id'])
+        report[regulator]['shared_id'] = len(s_edges)
+        divider = report[regulator][cell_type_a]['n']
+        if divider == 0: divider = 1
+        report[regulator][cell_type_a]['prop_s'] = report[regulator]['shared_id'] / divider
+        report[regulator][cell_type_a]['prop_u'] = None
+        if report[regulator][cell_type_a]['n'] > 0:
+            report[regulator][cell_type_a]['prop_u'] = abs(1 - report[regulator][cell_type_a]['prop_s'])
+        divider = report[regulator][cell_type_b]['n'] 
+        if divider == 0: divider = 1
+        report[regulator][cell_type_b]['prop_s'] = report[regulator]['shared_id'] / divider
+        report[regulator][cell_type_b]['prop_u'] = None
+        if report[regulator][cell_type_b]['n'] > 0:
+            report[regulator][cell_type_b]['prop_u'] = abs(1 - report[regulator][cell_type_b]['prop_s'])
+    out_reg_s[t] = report
+
+rpl = {}
+for t in tp:
+    rpl[t] = pd.DataFrame(zip([out_reg_s[t][x]['PV']['prop_u'] for x in out_reg_s[t].keys()],[out_reg_s[t][x]['SST']['prop_u'] for x in out_reg_s[t]]))
+    rpl[t].columns = ['PV','SST']
+    rpl[t].index = out_reg_s[t].keys()
+
+rpl['P28'][rpl['P28'].index.isin(seltf_p28)].hist(density=True)
+rpl['E18'][rpl['E18'].index.isin(seltf_e18)].hist(density=True)
+rpl['P2'][rpl['P2'].index.isin(seltf_p2)].hist(density=True)
+
+
+# fig, ax = plt.subplots()
+fig, axs = plt.subplots(ncols=3)
+ax, ax1,ax2 = axs.flatten()
+t = 'E18'
+ax.hist(rpl[t][rpl[t].index.isin(seltf_e18)]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10)
+ax.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
+ax.legend(prop={'size': 10})
+t = 'P2'
+ax1.hist(rpl[t][rpl[t].index.isin(seltf_p2)]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10)
+ax1.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
+ax1.legend(prop={'size': 10})
+
+t = 'P28'
+ax2.hist(rpl[t][rpl[t].index.isin(seltf_p28)]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'])
+ax2.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
+ax2.legend(prop={'size': 10})
+plt.show()
+
 
