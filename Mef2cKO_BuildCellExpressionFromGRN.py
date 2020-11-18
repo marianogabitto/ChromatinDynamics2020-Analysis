@@ -27,30 +27,20 @@ betas['SST'] = {'boot_{}'.format(b): pd.read_table(
     header=0) for b in range(1, 11)}
 
 TFA_s = TFA['SST'][TFA['SST'].columns[TFA['SST'].columns.isin(betas['SST']['boot_1'].columns)]]
-sst_avg = (betas['SST']['boot_1'].dot(TFA_s.T) +
-           betas['SST']['boot_2'].dot(TFA_s.T) +
-           betas['SST']['boot_3'].dot(TFA_s.T) +
-           betas['SST']['boot_4'].dot(TFA_s.T) +
-           betas['SST']['boot_5'].dot(TFA_s.T) +
-           betas['SST']['boot_6'].dot(TFA_s.T) +
-           betas['SST']['boot_7'].dot(TFA_s.T) +
-           betas['SST']['boot_8'].dot(TFA_s.T) +
-           betas['SST']['boot_9'].dot(TFA_s.T) +
-           betas['SST']['boot_10'].dot(TFA_s.T)) / 10
-sst_cells_names = list(sst_avg.columns.values.tolist())
-sst_cells_genes = list(sst_avg.index)
-
 TFA_p = TFA['PV'][TFA['PV'].columns[TFA['PV'].columns.isin(betas['PV']['boot_1'].columns)]]
-pv_avg = (betas['PV']['boot_1'].dot(TFA_p.T) +
-          betas['PV']['boot_2'].dot(TFA_p.T) +
-          betas['PV']['boot_3'].dot(TFA_p.T) +
-          betas['PV']['boot_4'].dot(TFA_p.T) +
-          betas['PV']['boot_5'].dot(TFA_p.T) +
-          betas['PV']['boot_6'].dot(TFA_p.T) +
-          betas['PV']['boot_7'].dot(TFA_p.T) +
-          betas['PV']['boot_8'].dot(TFA_p.T) +
-          betas['PV']['boot_9'].dot(TFA_p.T) +
-          betas['PV']['boot_10'].dot(TFA_p.T)) / 10
+
+acc = betas['SST']['boot_1']
+for i in range(2,11):
+    acc += betas['SST']['boot_{}'.format(i)]
+acc = acc.dot(TFA_s.T) / 10
+sst_avg = acc 
+
+acc = betas['PV']['boot_1']
+for i in range(2,11):
+    acc += betas['PV']['boot_{}'.format(i)]
+acc = acc.dot(TFA_p.T) / 10
+pv_avg = acc 
+
 pv_cells_names = list(pv_avg.columns.values.tolist())
 pv_cells_genes = list(pv_avg.index)
 
@@ -75,38 +65,24 @@ with open('Out/pv_avg_cells.csv', 'w', newline='') as csvfile:
 # ###################################################################################################
 # Building Cells from Average Expression Data after Zeroing MEF2C Activity
 print("Building Cells from Average Expression Data after Zeroing MEF2C Activity")
+
 TFA_sk = TFA_s.copy()
 TFA_pk = TFA_p.copy()
-TFA_sk.loc[:, 'Mef2c'] = 0
-TFA_pk.loc[:, 'Mef2c'] = 0
+TFA_sk.loc[:,'Mef2c'] = 0
+TFA_pk.loc[:,'Mef2c'] = 0
 
-kbetas = betas.copy()
-for ct in kbetas:
-    for boot in kbetas[ct]:
-        kbetas[ct][boot].loc['Mef2c'] = 0
-sst_k_avg = (kbetas['SST']['boot_1'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_2'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_3'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_4'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_5'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_6'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_7'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_8'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_9'].dot(TFA_sk.T) +
-             kbetas['SST']['boot_10'].dot(TFA_sk.T)) / 10
-sst_cells_names = list(sst_k_avg.columns.values.tolist())
-sst_cells_genes = list(sst_k_avg.index)
+acc = betas['SST']['boot_1']
+for i in range(2,11):
+    acc += betas['SST']['boot_{}'.format(i)]
+acc = acc.dot(TFA_sk.T) / 10
+sst_k_avg = acc 
 
-pv_k_avg = (kbetas['PV']['boot_1'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_2'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_3'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_4'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_5'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_6'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_7'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_8'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_9'].dot(TFA_pk.T) +
-            kbetas['PV']['boot_10'].dot(TFA_pk.T)) / 10
+acc = betas['PV']['boot_1']
+for i in range(2,11):
+    acc += betas['PV']['boot_{}'.format(i)]
+acc = acc.dot(TFA_pk.T) / 10
+pv_k_avg = acc 
+
 pv_cells_names = list(pv_k_avg.columns.values.tolist())
 pv_cells_genes = list(pv_k_avg.index)
 
