@@ -44,6 +44,7 @@ adatas['P2'].obs['cardinal_class'] = adatas['P2'].obs['CellType']
 
 fraction = .01
 for tp in adatas:
+    adatas[tp] = adatas[tp][:,adatas[tp].var.pct_dropout_by_counts != 100]
     adatas[tp] = adatas[tp][adatas[tp].obs.cardinal_class.isin(['PV', 'SST'])]
     sc.tl.rank_genes_groups(adatas[tp], groupby='cardinal_class',rankby_abs=True, pts = True,use_raw=False, layers='normed', method='wilcoxon',n_genes = adatas[tp].shape[1], key_added = 'DE')
     # sc.tl.filter_rank_genes_groups(adatas[tp],groupby='cardinal_class',use_raw=False,min_in_group_fraction=fraction, key_added='DEF')
@@ -175,43 +176,44 @@ pp.close()
 
 dedf ={}
 seltf = {}
-for tp in adatas:
-    dedf[tp] = sc.get.rank_genes_groups_df(adatas[tp], group="PV",key='DE')
-    gene_ids = adatas[tp].var.index.values
-    if(isspmatrix(adatas[tp].layers['counts'])):
-        obs = adatas[tp].layers['counts'].todense()
-    else: obs = adatas[tp].layers['counts'].copy()
-    obs = pd.DataFrame(obs,columns=gene_ids,index=adatas[tp].obs['cardinal_class'])
-    obs_bool = obs.astype(bool)
-    fraction_obs = obs_bool.groupby(level=0).sum()/obs_bool.groupby(level=0).count()
-    dedf[tp] = dedf[tp].merge(fraction_obs.T, left_on='names', right_index=True)
 
 var = .05
 f_grns = {}
 for grn in grns:
     f_grns[grn] = grns[grn][grns[grn]['var.exp.median'] >= var]
 
-p28_tf = set(set(f_grns['P28_PV'].regulator) | set(f_grns['P28_SST'].regulator))
-p2_tf  = set(set(f_grns['P2_PV' ].regulator) | set(f_grns['P2_SST' ].regulator))
-e18_tf = set(set(f_grns['E18_PV'].regulator) | set(f_grns['E18_SST'].regulator))
+seltf['P28'] = set(set(f_grns['P28_PV'].regulator) | set(f_grns['P28_SST'].regulator))
+seltf['P2']  = set(set(f_grns['P2_PV' ].regulator) | set(f_grns['P2_SST' ].regulator))
+seltf['E18'] = set(set(f_grns['E18_PV'].regulator) | set(f_grns['E18_SST'].regulator))
 
-seltf['P28'] = dedf['P28'][(abs(dedf['P28'].logfoldchanges)<=.25) &
-                           (dedf['P28'].PV >=.1) & 
-                           (dedf['P28'].SST>=.1) &
-                            dedf['P28'].names.isin(p28_tf)]
+for tp in adatas:
+    dedf[tp] = sc.get.rank_genes_groups_df(adatas[tp], group="PV",key='DE')
+    gene_ids = adatas[tp].var.index.values
+    if(isspmatrix(adatas[tp].layers['normed'])):
+        obs = adatas[tp].layers['normed'].todense()
+    else: obs = adatas[tp].layers['normed'].copy()
+    obs = pd.DataFrame(obs,columns=gene_ids,index=adatas[tp].obs['cardinal_class'])
+    obs_bool = obs.astype(bool)
+    fraction_obs = obs_bool.groupby(level=0).sum()/obs_bool.groupby(level=0).count()
+    mean_obs = obs.groupby(level=0).mean()
+    mean_obs.loc['SST'][mean_obs.loc['SST'] == 0] = 1
+    mean_obs = pd.DataFrame(np.log2(mean_obs.loc['PV']/mean_obs.loc['SST']))
+    mean_obs.columns=['l2']
+    dedf[tp] = dedf[tp].merge(fraction_obs.T, left_on='names', right_index=True)
+    dedf[tp] = dedf[tp].merge(mean_obs, left_on='names', right_index=True)
+    dedf[tp] = dedf[tp][dedf[tp].names.isin(seltf[tp])]
+    # dedf[tp].logfoldchanges[dedf[tp].logfoldchanges.isnull()] = 0
 
-seltf['P2'] = dedf['P2'][(abs(dedf['P2'].logfoldchanges)<=.25) &
-                             (dedf['P2'].PV >=.1) & 
-                             (dedf['P2'].SST>=.1) &
-                              dedf['P2'].names.isin(p2_tf)]
-
-seltf['E18'] = dedf['E18'][(abs(dedf['E18'].logfoldchanges)<=.25) &
-                               (dedf['E18'].PV >=.1) & 
-                               (dedf['E18'].SST>=.1) &
-                                dedf['E18'].names.isin(e18_tf)]
 
 
 
+
+seltf['P28'] = dedf['P28'][((abs(dedf['P28'].logfoldchanges)<=.25) | ((abs(dedf['P28'].logfoldchanges)>.25)&(dedf['P28'].pvals>.05))) &((dedf['P28'].PV >=.1)|(dedf['P28'].SST>=.1))].names.values.tolist()
+seltf['P2']  = dedf['P2'][((abs(dedf['P2'].l2)<=.25) | ((abs(dedf['P2'].l2)>.25)&(dedf['P2'].pvals>.05))) &((dedf['P2'].PV >=.1)|(dedf['P2'].SST>=.1))].names.values.tolist()
+seltf['E18'] = dedf['E18'][((abs(dedf['E18'].logfoldchanges)<=.25) | ((abs(dedf['E18'].logfoldchanges)>.25)&(dedf['E18'].pvals>.05))) &((dedf['E18'].PV >=.1)|(dedf['E18'].SST>=.1))].names.values.tolist()
+
+
+f_grns_s = f_grns
 out_reg_s = {}
 tp = set([x.split('_')[0] for x in f_grns_s])
 for t in tp:
@@ -258,25 +260,19 @@ for t in tp:
     rpl[t].columns = ['PV','SST']
     rpl[t].index = out_reg_s[t].keys()
 
-rpl['P28'][rpl['P28'].index.isin(seltf_p28)].hist(density=True)
-rpl['E18'][rpl['E18'].index.isin(seltf_e18)].hist(density=True)
-rpl['P2'][rpl['P2'].index.isin(seltf_p2)].hist(density=True)
-
-
-# fig, ax = plt.subplots()
 fig, axs = plt.subplots(ncols=3)
 ax, ax1,ax2 = axs.flatten()
 t = 'E18'
-ax.hist(rpl[t][rpl[t].index.isin(seltf_e18)]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10)
+ax.hist(rpl[t][rpl[t].index.isin(seltf['E18'])]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10)
 ax.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
 ax.legend(prop={'size': 10})
 t = 'P2'
-ax1.hist(rpl[t][rpl[t].index.isin(seltf_p2)]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10)
+ax1.hist(rpl[t][rpl[t].index.isin(seltf['P2'])]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10)
 ax1.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
 ax1.legend(prop={'size': 10})
 
 t = 'P28'
-ax2.hist(rpl[t][rpl[t].index.isin(seltf_p28)]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'])
+ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'])
 ax2.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
 ax2.legend(prop={'size': 10})
 plt.show()
