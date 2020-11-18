@@ -44,3 +44,17 @@ def shared_edges_variance(grns, var):
 
 def fraction_edges_variance(grns, var):
     pass
+
+
+def extract_tf(data, TF, obs_key = None, obs_value = None,my_layer='Ms'):
+    sub = -1
+    if(obs_key is not None and obs_key in data.obs.keys()):
+        data = data[data.obs[obs_key].isin([obs_value])]
+        if(isspmatrix(data.layers[my_layer])):
+            data.layers[my_layer] = data.layers[my_layer].todense()
+        sub = pd.DataFrame(data.layers[my_layer][:,data.var.index.isin(TF[0])])
+        sub.columns = data.var.index[data.var.index.isin(TF[0])]
+        sub.index=data.obs.index
+    return(sub)
+
+
