@@ -92,3 +92,31 @@ def shared_targets_by_var(grns, by_var=.05):
         grn = grns[x]
         sub[x] = grn[grn['var.exp.median'] >= by_var]
     return(shared_targets(sub))
+
+
+def get_de_info(adatas, seltf):
+    dedf = {}
+    for tp in adatas:
+        dedf[tp] = sc.get.rank_genes_groups_df(adatas[tp], group="PV",key='DE')
+        gene_ids = adatas[tp].var.index.values
+        if(isspmatrix(adatas[tp].layers['normed'])):
+            obs = adatas[tp].layers['normed'].todense()
+        else: obs = adatas[tp].layers['normed'].copy()
+        obs = pd.DataFrame(obs,columns=gene_ids,index=adatas[tp].obs['cardinal_class'])
+        obs_bool = obs.astype(bool)
+        fraction_obs = obs_bool.groupby(level=0).sum()/obs_bool.groupby(level=0).count()
+        mean_obs = obs.groupby(level=0).mean()
+        mean_obs.loc['SST'][mean_obs.loc['SST'] == 0] = 1
+        mean_obs = pd.DataFrame(np.log2(mean_obs.loc['PV']/mean_obs.loc['SST']))
+        mean_obs.columns=['l2']
+        dedf[tp] = dedf[tp].merge(fraction_obs.T, left_on='names', right_index=True)
+        dedf[tp] = dedf[tp].merge(mean_obs, left_on='names', right_index=True)
+        dedf[tp] = dedf[tp][dedf[tp].names.isin(seltf[tp])]
+    return dedf
+
+def get_non_specific_tf(dedf, lfc=.25, pval=.05,fpv=.1,fsst=.1):
+    return dedf[((abs(dedf.l2)<=lfc) | 
+                ((abs(dedf.l2)>lfc) & 
+                 (dedf.pvals>pval))) &
+                 ((dedf.PV >=fpv) | 
+                 (dedf.SST>=fsst))].names.values.tolist()

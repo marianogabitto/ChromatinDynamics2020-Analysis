@@ -151,6 +151,45 @@ pp.close()
 # ############################################################################################################
 # ############################################################################################################
 # PANEL F: TARGETS AMONGST NETWORK
+tbv = {}
+variance_range = np.arange(0.01, 0.41, 0.01)
+
+for net in grns:
+    tbv[net] = [targets_by_var(grns[net], var = _v) for _v in variance_range]
+
+pv_shared_tbv  = [len(shared_targets_by_var({k: v for k,v in grns.items() if 'PV' in k}, _v) )for _v in variance_range]
+sst_shared_tbv = [len(shared_targets_by_var({k: v for k,v in grns.items() if 'SST' in k}, _v)) for _v in variance_range]
+all_shared_tbv = [len(shared_targets_by_var(grns, _v)) for _v in variance_range]
+
+ese = {}
+ese['PV'] = pd.DataFrame(zip(tbv['P28_PV'],tbv['P2_PV'],tbv['E18_PV'], pv_shared_tbv, all_shared_tbv), columns=['P28','P2','E18','pv_shared','all_shared'], index=variance_range)
+ese['SST'] = pd.DataFrame(zip(tbv['P28_SST'],tbv['P2_SST'],tbv['E18_SST'], pv_shared_tbv, all_shared_tbv), columns=['P28','P2','E18','sst_shared','all_shared'], index=variance_range)
+
+fig, axs = plt.subplots(ncols=2)
+
+ax, ax1 = axs.flatten()
+pla = ax.scatter(ese['PV'].index.values,ese['PV']['P28'] ,alpha=0.6, marker='o', c='#5A738B')
+plb = ax.scatter(ese['PV'].index.values,ese['PV']['P2']  ,alpha=0.6, marker='s', c='#5A738B')
+plc = ax.scatter(ese['PV'].index.values,ese['PV']['E18'] ,alpha=0.6, marker='^', c='#5A738B')
+plg = ax.scatter(ese['PV'].index.values,ese['PV']['pv_shared'] ,alpha=0.6, marker='*', c='#5a8b77')
+plh = ax.scatter(ese['PV'].index.values,ese['PV']['all_shared'] ,alpha=0.6, marker='*', c='#658b5a')
+ax.legend((pla,plb,plc,plg,plh),('P28','P2','E18','PV shared','all shared'),loc='upper right', shadow=False)
+ax.set_title('PV')
+
+pld = ax1.scatter(ese['SST'].index.values,ese['SST']['P28'],alpha=0.6, marker='o',c='#B8767E')
+ple = ax1.scatter(ese['SST'].index.values,ese['SST']['P2'] ,alpha=0.6, marker='s',c='#B8767E')
+plf = ax1.scatter(ese['SST'].index.values,ese['SST']['E18'],alpha=0.6, marker='^',c='#B8767E')
+pli = ax1.scatter(ese['SST'].index.values,ese['SST']['sst_shared'] ,alpha=0.6, marker='*', c='#5a8b77')
+plj = ax1.scatter(ese['SST'].index.values,ese['SST']['all_shared'] ,alpha=0.6, marker='*', c='#658b5a')
+
+ax1.legend((pld,ple,plf,pli,plj),('P28','P2','E18','SST shared','all shared'),loc='upper right', shadow=False)
+ax1.set_title('SST')
+plt.tight_layout()
+# plt.ylabel('# edges')
+# plt.xlabel('variance explained')
+# plt.show()
+plt.savefig('panelF_Targets_among_networks.pdf')
+
 
 
 # ############################################################################################################
@@ -170,44 +209,12 @@ seltf['P28'] = set(set(f_grns['P28_PV'].regulator) | set(f_grns['P28_SST'].regul
 seltf['P2']  = set(set(f_grns['P2_PV' ].regulator) | set(f_grns['P2_SST' ].regulator))
 seltf['E18'] = set(set(f_grns['E18_PV'].regulator) | set(f_grns['E18_SST'].regulator))
 
-for tp in adatas:
-    dedf[tp] = sc.get.rank_genes_groups_df(adatas[tp], group="PV",key='DE')
-    gene_ids = adatas[tp].var.index.values
-    if(isspmatrix(adatas[tp].layers['normed'])):
-        obs = adatas[tp].layers['normed'].todense()
-    else: obs = adatas[tp].layers['normed'].copy()
-    obs = pd.DataFrame(obs,columns=gene_ids,index=adatas[tp].obs['cardinal_class'])
-    obs_bool = obs.astype(bool)
-    fraction_obs = obs_bool.groupby(level=0).sum()/obs_bool.groupby(level=0).count()
-    mean_obs = obs.groupby(level=0).mean()
-    mean_obs.loc['SST'][mean_obs.loc['SST'] == 0] = 1
-    mean_obs = pd.DataFrame(np.log2(mean_obs.loc['PV']/mean_obs.loc['SST']))
-    mean_obs.columns=['l2']
-    dedf[tp] = dedf[tp].merge(fraction_obs.T, left_on='names', right_index=True)
-    dedf[tp] = dedf[tp].merge(mean_obs, left_on='names', right_index=True)
-    dedf[tp] = dedf[tp][dedf[tp].names.isin(seltf[tp])]
 
+dedf  = get_de_info(adatas, seltf)
 
-
-
-
-seltf['P28'] = dedf['P28'][((abs(dedf['P28'].l2)<=.25) | 
-                            ((abs(dedf['P28'].l2)>.25) & 
-                             (dedf['P28'].pvals>.05))) &
-                             ((dedf['P28'].PV >=.1) | 
-                             (dedf['P28'].SST>=.1))].names.values.tolist()
-
-seltf['P2']  = dedf['P2'][((abs(dedf['P2'].l2)<=.25) |
-                          ((abs(dedf['P2'].l2)>.25)  &
-                            (dedf['P2'].pvals>.05))) &
-                            ((dedf['P2'].PV >=.1) |
-                             (dedf['P2'].SST>=.1))].names.values.tolist()
-
-seltf['E18'] = dedf['E18'][((abs(dedf['E18'].l2)<=.25) |
-                           ((abs(dedf['E18'].l2)>.25)  &
-                            (dedf['E18'].pvals>.05)))  &
-                            ((dedf['E18'].PV >=.1) |
-                            (dedf['E18'].SST>=.1))].names.values.tolist()
+seltf['P28'] = get_non_specific_tf(dedf['P28'])
+seltf['P2']  = get_non_specific_tf(dedf['P2'])
+seltf['E18'] = get_non_specific_tf(dedf['E18'])
 
 out_reg_s = {}
 tp = set([x.split('_')[0] for x in f_grns])
