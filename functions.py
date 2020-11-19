@@ -58,3 +58,37 @@ def extract_tf(data, TF, obs_key = None, obs_value = None,my_layer='Ms'):
     return(sub)
 
 
+def load_expression(paths):
+    adatas = {k.split('_')[0]:sc.read_h5ad(paths[k]) for k in paths if '_exp' in k}
+    adatas['P2'].obs['cardinal_class'] = adatas['P2'].obs['CellType']
+    for tp in adatas:
+        adatas[tp] = adatas[tp][:,adatas[tp].var.pct_dropout_by_counts != 100]
+        adatas[tp] = adatas[tp][adatas[tp].obs.cardinal_class.isin(['PV', 'SST'])]
+        sc.tl.rank_genes_groups(adatas[tp], groupby='cardinal_class',rankby_abs=True,
+                                pts = True,use_raw=False, layers='normed',
+                                method='wilcoxon',n_genes = adatas[tp].shape[1], 
+                                key_added = 'DE')
+
+    return adatas
+
+
+def targets_by_var(grn, var=.05, tfs=None):
+    tmpg = grn
+    if tfs is not None:
+        tmpg = grn[grn.regulator.isin(tfs.index.values)] 
+    tmpg = tmpg[tmpg['var.exp.median']>=var]
+    return(len(set(tmpg.target)))
+
+def shared_targets(grns):
+    edges = [grns[x].target for x in grns]
+    ret = set(edges[0])
+    for x in range(len(edges)-1,0,-1):
+        ret = ret & set(edges[x]) & set(edges[x-1])
+    return(ret)
+
+def shared_targets_by_var(grns, by_var=.05):
+    sub = {}
+    for x in grns:
+        grn = grns[x]
+        sub[x] = grn[grn['var.exp.median'] >= by_var]
+    return(shared_targets(sub))

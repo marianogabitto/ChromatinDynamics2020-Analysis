@@ -15,60 +15,44 @@ from scipy.sparse import isspmatrix
 # ############################################################################################################
 # ############################################################################################################
 # READING inputs
-# GRN
-# nets = {'P28_PV': 'Data/P28/P28PV.tsv', 'P28_SST': 'Data/P28/P28SST.tsv', 'E18_PV': 'Data/E18/E18PV.tsv',
-#         'E18_SST': 'Data/E18/E18SST.tsv', 'P2_PV': 'Data/nov11P2-PVP-mtl/PV/network.tsv',
-#         'P2_SST': 'Data/nov11P2-PVP-mtl/SST/network.tsv'}
-# grns = {x: fnc.read_and_filter_grn(nets[x], var=.0, net=x) for x in nets}
 
-nets = {'P28_PV' :'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/P28PV.tsv',
-        'P28_SST':'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/P28SST.tsv',
-        'E18_PV' :'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/E18PV.tsv',
-        'E18_SST':'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/E18SST.tsv',
-        'P2_PV'  :'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/16NOVP2PVnet.tsv',
-        'P2_SST' :'/Users/gas361/Desktop/KATE_MARIANO_2020/GRAPH/16NOVP2SSTnet.tsv'}
+nets = {'P28_PV' :'Data/P28PV.tsv',
+        'P28_SST':'Data/P28SST.tsv',
+        'E18_PV' :'Data/E18PV.tsv',
+        'E18_SST':'Data/E18SST.tsv',
+        'P2_PV'  :'Data/16NOVP2PVnet.tsv',
+        'P2_SST' :'Data/16NOVP2SSTnet.tsv'}
 
-        # 'P2_PV'  :'/Users/gas361/Desktop/KATE_MARIANO_2020/P2/nov11P2-PVP-mtl/PV/11NOVP2PVnet.tsv',
-        # 'P2_SST' :'/Users/gas361/Desktop/KATE_MARIANO_2020/P2/nov11P2-PVP-mtl/SST/11NOVP2SSTnet.tsv'}
 grns = {x:read_and_filter_grn(nets[x],var=.0,net=x) for x in nets}
 
-
 # RNA
-paths = {'P28_exp':'P28_dwk.h5ad',
-         'E18_exp':'E18_Lhx6.h5ad',
-         'P2_exp' :'nov15_P2_noftt.h5ad',
-         'tf_list':'P2/NOV6_aug_mus_tf.txt'}
+paths = {'P28_exp':'Data/P28_dwk.h5ad',
+         'E18_exp':'Data/E18_Lhx6.h5ad',
+         'P2_exp' :'Data/nov15_P2_noftt.h5ad',
+         'tf_list':'Data/NOV6_aug_mus_tf.txt'}
 
-adatas = {k.split('_')[0]:sc.read_h5ad(paths[k]) for k in paths if '_exp' in k}
-adatas['P2'].obs['cardinal_class'] = adatas['P2'].obs['CellType']
 
+adatas = load_expression(paths)
 fraction = .01
-for tp in adatas:
-    adatas[tp] = adatas[tp][:,adatas[tp].var.pct_dropout_by_counts != 100]
-    adatas[tp] = adatas[tp][adatas[tp].obs.cardinal_class.isin(['PV', 'SST'])]
-    sc.tl.rank_genes_groups(adatas[tp], groupby='cardinal_class',rankby_abs=True, pts = True,use_raw=False, layers='normed', method='wilcoxon',n_genes = adatas[tp].shape[1], key_added = 'DE')
-    # sc.tl.filter_rank_genes_groups(adatas[tp],groupby='cardinal_class',use_raw=False,min_in_group_fraction=fraction, key_added='DEF')
 
+# TF = pd.read_table(paths['tf_list'], header=None)
+# TF_per_TP = {k:{} for k in adatas}
+# for k in TF_per_TP:
+#     for cardinal in ['PV','SST']:
+#         TF_per_TP[k][cardinal] = extract_tf(adatas[k],TF, obs_key = 'cardinal_class',obs_value = cardinal, my_layer='normed')
 
-# TF
-TF = pd.read_table(paths['tf_list'], header=None)
-TF_per_TP = {k:{} for k in adatas}
-for k in TF_per_TP:
-    for cardinal in ['PV','SST']:
-        TF_per_TP[k][cardinal] = extract_tf(adatas[k],TF, obs_key = 'cardinal_class',obs_value = cardinal, my_layer='normed')
+# ### Sort TF on decreasing TMM expression
+# tmms = {cl:{} for cl in TF_per_TP}
+# bps = {}
+# for ct in tmms:
+#     for cl in TF_per_TP[ct]:
+#         tmms[ct][cl] = pd.DataFrame(stats.trim_mean(abs(TF_per_TP[ct][cl]),  0.025, axis=0),index=TF_per_TP[ct][cl].columns.values)
+#     bps[ct] = pd.concat([tmms[ct][x] for x in tmms[ct]], axis=1) 
+#     bps[ct].columns = list(tmms[ct].keys())
 
-### Sort TF on decreasing TMM expression
-tmms = {cl:{} for cl in TF_per_TP}
-bps = {}
-for ct in tmms:
-    for cl in TF_per_TP[ct]:
-        tmms[ct][cl] = pd.DataFrame(stats.trim_mean(abs(TF_per_TP[ct][cl]),  0.025, axis=0),index=TF_per_TP[ct][cl].columns.values)
-    bps[ct] = pd.concat([tmms[ct][x] for x in tmms[ct]], axis=1) 
-    bps[ct].columns = list(tmms[ct].keys())
-
-sel_tfs = {}
-for ct in bps:
-    sel_tfs[ct] = bps[ct][abs(bps[ct]).sum(axis=1)>0]
+# sel_tfs = {}
+# for ct in bps:
+#     sel_tfs[ct] = bps[ct][abs(bps[ct]).sum(axis=1)>0]
 
 # del tmms
 # del bps
@@ -202,31 +186,38 @@ for tp in adatas:
     dedf[tp] = dedf[tp].merge(fraction_obs.T, left_on='names', right_index=True)
     dedf[tp] = dedf[tp].merge(mean_obs, left_on='names', right_index=True)
     dedf[tp] = dedf[tp][dedf[tp].names.isin(seltf[tp])]
-    # dedf[tp].logfoldchanges[dedf[tp].logfoldchanges.isnull()] = 0
 
 
 
 
 
-seltf['P28'] = dedf['P28'][((abs(dedf['P28'].l2)<=.25) | ((abs(dedf['P28'].l2)>.25)&(dedf['P28'].pvals>.05))) &((dedf['P28'].PV >=.1)|(dedf['P28'].SST>=.1))].names.values.tolist()
-seltf['P2']  = dedf['P2'][((abs(dedf['P2'].l2)<=.25) | ((abs(dedf['P2'].l2)>.25)&(dedf['P2'].pvals>.05))) &((dedf['P2'].PV >=.1)|(dedf['P2'].SST>=.1))].names.values.tolist()
-seltf['E18'] = dedf['E18'][((abs(dedf['E18'].l2)<=.25) | ((abs(dedf['E18'].l2)>.25)&(dedf['E18'].pvals>.05))) &((dedf['E18'].PV >=.1)|(dedf['E18'].SST>=.1))].names.values.tolist()
-# ############################################################################################################
-# ############################################################################################################
-# ############################################################################################################
-# PANEL G: NUMBER OF EXPRESSED GENES
+seltf['P28'] = dedf['P28'][((abs(dedf['P28'].l2)<=.25) | 
+                            ((abs(dedf['P28'].l2)>.25) & 
+                             (dedf['P28'].pvals>.05))) &
+                             ((dedf['P28'].PV >=.1) | 
+                             (dedf['P28'].SST>=.1))].names.values.tolist()
 
+seltf['P2']  = dedf['P2'][((abs(dedf['P2'].l2)<=.25) |
+                          ((abs(dedf['P2'].l2)>.25)  &
+                            (dedf['P2'].pvals>.05))) &
+                            ((dedf['P2'].PV >=.1) |
+                             (dedf['P2'].SST>=.1))].names.values.tolist()
 
-f_grns_s = f_grns
+seltf['E18'] = dedf['E18'][((abs(dedf['E18'].l2)<=.25) |
+                           ((abs(dedf['E18'].l2)>.25)  &
+                            (dedf['E18'].pvals>.05)))  &
+                            ((dedf['E18'].PV >=.1) |
+                            (dedf['E18'].SST>=.1))].names.values.tolist()
+
 out_reg_s = {}
-tp = set([x.split('_')[0] for x in f_grns_s])
+tp = set([x.split('_')[0] for x in f_grns])
 for t in tp:
     report = {}
-    network_a, network_b = [x for x in f_grns_s.keys() if t == x.split('_')[0]]
+    network_a, network_b = [x for x in f_grns.keys() if t == x.split('_')[0]]
     networks = [network_a, network_b]
     cell_type_a, cell_type_b = [x.split('_')[1] for x in networks]
-    f_net_a  = f_grns_s[network_a]
-    f_net_b  = f_grns_s[network_b]
+    f_net_a  = f_grns[network_a]
+    f_net_b  = f_grns[network_b]
     for regulator in set(set(f_net_a.regulator) | set(f_net_b.regulator)):
         n=0
         edge_id = []
@@ -267,16 +258,13 @@ for t in tp:
 fig, axs = plt.subplots(ncols=3)
 ax, ax1,ax2 = axs.flatten()
 t = 'E18'
-ax.hist(rpl[t][rpl[t].index.isin(seltf['E18'])]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10)
-ax.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
-ax.legend(prop={'size': 10})
+ax.hist(rpl[t][rpl[t].index.isin(seltf['E18'])]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10, color = ['#5A738B','#B8767E'])
+ax.set_title('{}'.format(t))
 t = 'P2'
-ax1.hist(rpl[t][rpl[t].index.isin(seltf['P2'])]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10)
-ax1.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
-ax1.legend(prop={'size': 10})
-
+ax1.hist(rpl[t][rpl[t].index.isin(seltf['P2'])]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10, color = ['#5A738B','#B8767E'])
+ax1.set_title('{}'.format(t))
 t = 'P28'
-ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'])
-ax2.set_title('Density of unique edges proportions for non specific TF {}'.format(t))
-ax2.legend(prop={'size': 10})
-plt.show()
+ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'], color = ['#5A738B','#B8767E'])
+ax2.set_title('{}'.format(t))
+plt.tight_layout()
+plt.savefig('panelG_unique_celltype_edges_for_non_specific_TFS.pdf')
