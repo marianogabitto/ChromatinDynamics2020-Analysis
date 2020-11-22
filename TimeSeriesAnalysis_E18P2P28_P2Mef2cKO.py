@@ -4,12 +4,7 @@
 # Joint Work: Giuseppe Saldi and Mariano Gabitto
 # ###################################################################################################
 # ###################################################################################################
-import functions as fnc
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-import numpy as np
-import pandas as pd
-from scipy.sparse import isspmatrix
+from functions import *
 
 # ############################################################################################################
 # ############################################################################################################
@@ -22,40 +17,16 @@ nets = {'P28_PV' :'Data/P28PV.tsv',
         'E18_SST':'Data/E18SST.tsv',
         'P2_PV'  :'Data/16NOVP2PVnet.tsv',
         'P2_SST' :'Data/16NOVP2SSTnet.tsv'}
-
-grns = {x:read_and_filter_grn(nets[x],var=.0,net=x) for x in nets}
-
 # RNA
 paths = {'P28_exp':'Data/P28_dwk.h5ad',
          'E18_exp':'Data/E18_Lhx6.h5ad',
          'P2_exp' :'Data/nov15_P2_noftt.h5ad',
          'tf_list':'Data/NOV6_aug_mus_tf.txt'}
 
-
+grns = {x:read_and_filter_grn(nets[x],var=.0,net=x) for x in nets}
 adatas = load_expression(paths)
 fraction = .01
 
-# TF = pd.read_table(paths['tf_list'], header=None)
-# TF_per_TP = {k:{} for k in adatas}
-# for k in TF_per_TP:
-#     for cardinal in ['PV','SST']:
-#         TF_per_TP[k][cardinal] = extract_tf(adatas[k],TF, obs_key = 'cardinal_class',obs_value = cardinal, my_layer='normed')
-
-# ### Sort TF on decreasing TMM expression
-# tmms = {cl:{} for cl in TF_per_TP}
-# bps = {}
-# for ct in tmms:
-#     for cl in TF_per_TP[ct]:
-#         tmms[ct][cl] = pd.DataFrame(stats.trim_mean(abs(TF_per_TP[ct][cl]),  0.025, axis=0),index=TF_per_TP[ct][cl].columns.values)
-#     bps[ct] = pd.concat([tmms[ct][x] for x in tmms[ct]], axis=1) 
-#     bps[ct].columns = list(tmms[ct].keys())
-
-# sel_tfs = {}
-# for ct in bps:
-#     sel_tfs[ct] = bps[ct][abs(bps[ct]).sum(axis=1)>0]
-
-# del tmms
-# del bps
 # ############################################################################################################
 # ############################################################################################################
 # ############################################################################################################
@@ -108,9 +79,9 @@ pp.close()
 # ############################################################################################################
 # PANEL D: SHARD EDGES PV AND SST AT EACH TIME POINT
 variance_range = np.arange(0.01, 0.41, 0.01)
-e18 = fnc.shared_edges_variance({'E18_SST': grns['E18_SST'], 'E18_PV': grns['E18_PV']}, variance_range)
-p2 = fnc.shared_edges_variance({'P2_SST': grns['P2_SST'], 'P2_PV': grns['P2_PV']}, variance_range)
-p28 = fnc.shared_edges_variance({'P28_SST': grns['P28_SST'], 'P28_PV': grns['P28_PV']}, variance_range)
+e18 = shared_edges_variance({'E18_SST': grns['E18_SST'], 'E18_PV': grns['E18_PV']}, variance_range)
+p2 = shared_edges_variance({'P2_SST': grns['P2_SST'], 'P2_PV': grns['P2_PV']}, variance_range)
+p28 = shared_edges_variance({'P28_SST': grns['P28_SST'], 'P28_PV': grns['P28_PV']}, variance_range)
 
 pp = PdfPages("panelC_shared_edges_pv_sst.pdf")
 plt.scatter(variance_range, p28, alpha=0.6, marker='o')
@@ -216,62 +187,18 @@ seltf['P28'] = get_non_specific_tf(dedf['P28'])
 seltf['P2']  = get_non_specific_tf(dedf['P2'])
 seltf['E18'] = get_non_specific_tf(dedf['E18'])
 
-out_reg_s = {}
-tp = set([x.split('_')[0] for x in f_grns])
-for t in tp:
-    report = {}
-    network_a, network_b = [x for x in f_grns.keys() if t == x.split('_')[0]]
-    networks = [network_a, network_b]
-    cell_type_a, cell_type_b = [x.split('_')[1] for x in networks]
-    f_net_a  = f_grns[network_a]
-    f_net_b  = f_grns[network_b]
-    for regulator in set(set(f_net_a.regulator) | set(f_net_b.regulator)):
-        n=0
-        edge_id = []
-        if regulator in f_net_a.regulator.values:
-            n = f_net_a.regulator.value_counts()[regulator]
-            edge_id = list(f_net_a[f_net_a.regulator==regulator].id.values)
-        report[regulator] = {cell_type_a:{'n':n,'edge_id':edge_id}}
-        n=0
-        edge_id = []
-        if regulator in f_net_b.regulator.values:
-            n = f_net_b.regulator.value_counts()[regulator]
-            edge_id = list(f_net_b[f_net_b.regulator==regulator].id.values)
-
-        report[regulator][cell_type_b] = {'n': n , 'edge_id':edge_id}
-        
-        s_edges = set(report[regulator][cell_type_b]['edge_id']) & set(report[regulator][cell_type_a]['edge_id'])
-        report[regulator]['shared_id'] = len(s_edges)
-        divider = report[regulator][cell_type_a]['n']
-        if divider == 0: divider = 1
-        report[regulator][cell_type_a]['prop_s'] = report[regulator]['shared_id'] / divider
-        report[regulator][cell_type_a]['prop_u'] = None
-        if report[regulator][cell_type_a]['n'] > 0:
-            report[regulator][cell_type_a]['prop_u'] = abs(1 - report[regulator][cell_type_a]['prop_s'])
-        divider = report[regulator][cell_type_b]['n'] 
-        if divider == 0: divider = 1
-        report[regulator][cell_type_b]['prop_s'] = report[regulator]['shared_id'] / divider
-        report[regulator][cell_type_b]['prop_u'] = None
-        if report[regulator][cell_type_b]['n'] > 0:
-            report[regulator][cell_type_b]['prop_u'] = abs(1 - report[regulator][cell_type_b]['prop_s'])
-    out_reg_s[t] = report
-
-rpl = {}
-for t in tp:
-    rpl[t] = pd.DataFrame(zip([out_reg_s[t][x]['PV']['prop_u'] for x in out_reg_s[t].keys()],[out_reg_s[t][x]['SST']['prop_u'] for x in out_reg_s[t]]))
-    rpl[t].columns = ['PV','SST']
-    rpl[t].index = out_reg_s[t].keys()
+rpl = compute_edge_fractions(f_grns)
 
 fig, axs = plt.subplots(ncols=3)
 ax, ax1,ax2 = axs.flatten()
 t = 'E18'
-ax.hist(rpl[t][rpl[t].index.isin(seltf['E18'])]*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10, color = ['#5A738B','#B8767E'])
+ax.hist(rpl[t][rpl[t].index.isin(seltf['E18'])].T*100, alpha=0.6,density=True,label=['E18 PV','E18 SST'],bins=10, color = ['#5A738B','#B8767E'])
 ax.set_title('{}'.format(t))
 t = 'P2'
-ax1.hist(rpl[t][rpl[t].index.isin(seltf['P2'])]*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10, color = ['#5A738B','#B8767E'])
+ax1.hist(rpl[t][rpl[t].index.isin(seltf['P2'])].T*100, alpha=0.6,density=True,label=['P2 PV','P2 SST'],bins=10, color = ['#5A738B','#B8767E'])
 ax1.set_title('{}'.format(t))
 t = 'P28'
-ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])]*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'], color = ['#5A738B','#B8767E'])
+ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])].T*100, alpha=0.6,density=True,label=['P28 PV','P28 SST'], color = ['#5A738B','#B8767E'])
 ax2.set_title('{}'.format(t))
 plt.tight_layout()
 plt.savefig('panelG_unique_celltype_edges_for_non_specific_TFS.pdf')

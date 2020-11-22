@@ -1,11 +1,10 @@
-import igraph as ig
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import cairocffi
-from scipy import stats
 import scanpy as sc
-import pandas as pd
+from scipy.sparse import isspmatrix
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 def read_and_filter_grn(grn_path, var=0, ci=0, net=None):
@@ -120,3 +119,54 @@ def get_non_specific_tf(dedf, lfc=.25, pval=.05,fpv=.1,fsst=.1):
                  (dedf.pvals>pval))) &
                  ((dedf.PV >=fpv) | 
                  (dedf.SST>=fsst))].names.values.tolist()
+
+def compute_edge_fractions(f_grns):
+    out_reg_s = {}
+    tp = set([x.split('_')[0] for x in f_grns])
+    for t in tp:
+        report = {}
+        network_a, network_b = [x for x in f_grns.keys() if t == x.split('_')[0]]
+        networks = [network_a, network_b]
+        cell_type_a, cell_type_b = [x.split('_')[1] for x in networks]
+        f_net_a  = f_grns[network_a]
+        f_net_b  = f_grns[network_b]
+        for regulator in set(set(f_net_a.regulator) | set(f_net_b.regulator)):
+            n=0
+            edge_id = []
+            if regulator in f_net_a.regulator.values:
+                n = f_net_a.regulator.value_counts()[regulator]
+                edge_id = list(f_net_a[f_net_a.regulator==regulator].id.values)
+            report[regulator] = {cell_type_a:{'n':n,'edge_id':edge_id}}
+            n=0
+            edge_id = []
+            if regulator in f_net_b.regulator.values:
+                n = f_net_b.regulator.value_counts()[regulator]
+                edge_id = list(f_net_b[f_net_b.regulator==regulator].id.values)
+
+            report[regulator][cell_type_b] = {'n': n , 'edge_id':edge_id}
+            
+            s_edges = set(report[regulator][cell_type_b]['edge_id']) & set(report[regulator][cell_type_a]['edge_id'])
+            report[regulator]['shared_id'] = len(s_edges)
+            divider = report[regulator][cell_type_a]['n']
+            if divider == 0: divider = 1
+            report[regulator][cell_type_a]['prop_s'] = report[regulator]['shared_id'] / divider
+            report[regulator][cell_type_a]['prop_u'] = None
+            if report[regulator][cell_type_a]['n'] > 0:
+                report[regulator][cell_type_a]['prop_u'] = abs(1 - report[regulator][cell_type_a]['prop_s'])
+            divider = report[regulator][cell_type_b]['n'] 
+            if divider == 0: divider = 1
+            report[regulator][cell_type_b]['prop_s'] = report[regulator]['shared_id'] / divider
+            report[regulator][cell_type_b]['prop_u'] = None
+            if report[regulator][cell_type_b]['n'] > 0:
+                report[regulator][cell_type_b]['prop_u'] = abs(1 - report[regulator][cell_type_b]['prop_s'])
+        out_reg_s[t] = report
+
+    rpl = {}
+    
+    for t in tp:
+        rpl[t] = pd.DataFrame(zip([out_reg_s[t][x]['PV']['prop_u'] for x in out_reg_s[t].keys()],
+                                  [out_reg_s[t][x]['SST']['prop_u'] for x in out_reg_s[t]]))
+        rpl[t].columns = ['PV','SST']
+        rpl[t].index = out_reg_s[t].keys()
+    
+    return rpl
