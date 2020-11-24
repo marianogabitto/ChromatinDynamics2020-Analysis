@@ -202,3 +202,24 @@ ax2.hist(rpl[t][rpl[t].index.isin(seltf['P28'])].T*100, alpha=0.6,density=True,l
 ax2.set_title('{}'.format(t))
 plt.tight_layout()
 plt.savefig('panelG_unique_celltype_edges_for_non_specific_TFS.pdf')
+
+# ############################################################################################################
+# ############################################################################################################
+# ############################################################################################################
+# networks files for rendering 
+var = .05
+f_grns = {}
+for grn in grns:
+    f_grns[grn] = grns[grn][grns[grn]['var.exp.median'] >= var]
+    tmp = f_grns[grn][['target','regulator','var.exp.median']]
+    tmp[['target','regulator','var.exp.median']].to_csv('ipynb/{}.tsv'.format(grn),sep='\t',index=None)
+
+
+e18s = f_grns['E18_PV'][f_grns['E18_PV'].id.isin(f_grns['E18_SST'].id)][['target','regulator','var.exp.median']]
+e18s.to_csv('ipynb/{}.tsv'.format('E18_shared'),sep='\t',index=None)
+
+p2s = f_grns['P2_PV'][f_grns['P2_PV'].id.isin(f_grns['P2_SST'].id)][['target','regulator','var.exp.median']]
+p2s.to_csv('ipynb/{}.tsv'.format('P2_shared'),sep='\t',index=None)
+
+p28s = f_grns['P28_PV'][f_grns['P28_PV'].id.isin(f_grns['P28_SST'].id)][['target','regulator','var.exp.median']]
+p28s.to_csv('ipynb/{}.tsv'.format('P28_shared'),sep='\t',index=None)
