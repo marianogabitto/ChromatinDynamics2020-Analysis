@@ -55,18 +55,20 @@ pp.close()
 # ############################################################################################################
 # ############################################################################################################
 # PANEL C: TOTAL NUMBER OF EDGES
+v_range = np.arange(0.01, 0.41, 0.01)
 tot = {}
-for gr in grns.keys():
+for gr in grns:
     list_tot = []
     edges_vem = grns[gr]['var.exp.median'].to_numpy()
-    for i_ in np.arange(0.01, 0.41, 0.01):
+    for i_ in v_range:
         list_tot.append(np.sum(edges_vem > i_))
     tot[gr] = list_tot
 
 pp = PdfPages("panelB_total_number_edges.pdf")
 markers = ['o', 'o', '^', '^', 's', 's']
+colors  = ['#5A738B','#B8767E','#5A738B','#B8767E','#5A738B','#B8767E']
 for i_, gr in enumerate(tot.keys()):
-    plt.scatter(np.arange(0.01, 0.4, 0.01), tot[gr], alpha=0.6, label=gr, marker=markers[i_])
+    plt.scatter(v_range, tot[gr], alpha=0.6, label=gr, marker=markers[i_], c=colors[i_])
 plt.legend(loc='upper right', shadow=False)
 plt.xlabel('variance explained')
 plt.ylabel('# edges')
@@ -80,14 +82,14 @@ pp.close()
 # PANEL D: SHARD EDGES PV AND SST AT EACH TIME POINT
 variance_range = np.arange(0.01, 0.41, 0.01)
 e18 = shared_edges_variance({'E18_SST': grns['E18_SST'], 'E18_PV': grns['E18_PV']}, variance_range)
-p2 = shared_edges_variance({'P2_SST': grns['P2_SST'], 'P2_PV': grns['P2_PV']}, variance_range)
+p2  = shared_edges_variance({'P2_SST' : grns['P2_SST'],   'P2_PV': grns['P2_PV' ]}, variance_range)
 p28 = shared_edges_variance({'P28_SST': grns['P28_SST'], 'P28_PV': grns['P28_PV']}, variance_range)
 
 pp = PdfPages("panelC_shared_edges_pv_sst.pdf")
-plt.scatter(variance_range, p28, alpha=0.6, marker='o')
-plt.scatter(variance_range, p2, alpha=0.6, marker='s')
-plt.scatter(variance_range, e18, alpha=0.6, marker='^')
-plt.legend(loc='upper right', shadow=False)
+plt.scatter(variance_range, p28, alpha=0.6, marker='o',c='#999' )
+plt.scatter(variance_range, p2,  alpha=0.6, marker='s',c='#999' )
+plt.scatter(variance_range, e18, alpha=0.6, marker='^',c='#999' )
+plt.legend(loc='upper right', shadow=False,labels=['P28','P2','E18'])
 plt.xlabel('variance explained')
 plt.ylabel('# shared edges')
 plt.tight_layout()
@@ -100,18 +102,18 @@ pp.close()
 # PANEL E: FRACTION OF UNIQUE EDGES PV AND SST AT EACH TIME POINT
 pp = PdfPages("panelD_fraction_unique_edges_pv_sst.pdf")
 plt.scatter(variance_range, (np.array(tot['E18_SST']) - np.array(e18)) / np.array(tot['E18_SST']),
-            alpha=0.6, marker='^', color='b', label="E18 SST")
+            alpha=0.6, marker='^', color='#B8767E', label="E18 SST")
 plt.scatter(variance_range, (np.array(tot['E18_PV']) - np.array(e18)) / np.array(tot['E18_PV']),
-            alpha=0.6, marker='^', color='r', label="E18 PV")
+            alpha=0.6, marker='^', color='#5A738B', label="E18 PV")
 plt.scatter(variance_range, (np.array(tot['P2_SST']) - np.array(p2)) / np.array(tot['P2_SST']),
-            alpha=0.6, marker='s', color='b', label="P2 SST")
+            alpha=0.6, marker='s', color='#B8767E', label="P2 SST")
 plt.scatter(variance_range, (np.array(tot['P2_PV']) - np.array(p2)) / np.array(tot['P2_PV']),
-            alpha=0.6, marker='s', color='r', label="P2 PV")
+            alpha=0.6, marker='s', color='#5A738B', label="P2 PV")
 plt.scatter(variance_range, (np.array(tot['P28_SST']) - np.array(p2)) / np.array(tot['P28_SST']),
-            alpha=0.6, marker='o', color='b', label="P28 SST")
+            alpha=0.6, marker='o', color='#B8767E', label="P28 SST")
 plt.scatter(variance_range, (np.array(tot['P28_PV']) - np.array(p2)) / np.array(tot['P28_PV']),
-            alpha=0.6, marker='o', color='r', label="P28 PV")
-plt.legend(loc='upper right', shadow=False)
+            alpha=0.6, marker='o', color='#5A738B', label="P28 PV")
+plt.legend(loc='best', shadow=False)
 plt.xlabel('variance explained')
 plt.ylabel('Fraction of unique edges')
 plt.axis([0, 0.4, 0, 1.0])
@@ -133,8 +135,14 @@ sst_shared_tbv = [len(shared_targets_by_var({k: v for k,v in grns.items() if 'SS
 all_shared_tbv = [len(shared_targets_by_var(grns, _v)) for _v in variance_range]
 
 ese = {}
-ese['PV'] = pd.DataFrame(zip(tbv['P28_PV'],tbv['P2_PV'],tbv['E18_PV'], pv_shared_tbv, all_shared_tbv), columns=['P28','P2','E18','pv_shared','all_shared'], index=variance_range)
-ese['SST'] = pd.DataFrame(zip(tbv['P28_SST'],tbv['P2_SST'],tbv['E18_SST'], pv_shared_tbv, all_shared_tbv), columns=['P28','P2','E18','sst_shared','all_shared'], index=variance_range)
+ese['PV'] = pd.DataFrame(zip(tbv['P28_PV'],tbv['P2_PV'],tbv['E18_PV'],
+                         pv_shared_tbv, all_shared_tbv),
+                         columns=['P28','P2','E18','pv_shared','all_shared'],
+                         index=variance_range)
+ese['SST'] = pd.DataFrame(zip(tbv['P28_SST'],tbv['P2_SST'],tbv['E18_SST'],
+                          pv_shared_tbv, all_shared_tbv),
+                          columns=['P28','P2','E18','sst_shared','all_shared'],
+                          index=variance_range)
 
 fig, axs = plt.subplots(ncols=2)
 
