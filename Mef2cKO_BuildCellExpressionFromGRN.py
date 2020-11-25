@@ -27,15 +27,15 @@ pv_avg = B_dot_A(betas['PV'], TFA_p, 10)
 sst_cells = list(sst_avg.columns.values)
 sst_genes = list(sst_avg.index)
 paths = {'mtx': 'Out/sst_avg.mtx',
-'genes':     'Out/sst_avg_genes.csv',
-'cells':     'Out/sst_avg_cells.csv'}
+'genes':     'Out/sst_avg_genes.tsv',
+'cells':     'Out/sst_avg_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_avg)
 
 pv_cells = list(pv_avg.columns.values)
 pv_genes = list(pv_avg.index)
 paths = {'mtx': 'Out/pv_avg.mtx',
-'genes':     'Out/pv_avg_genes.csv',
-'cells':     'Out/pv_avg_cells.csv'}
+'genes':     'Out/pv_avg_genes.tsv',
+'cells':     'Out/pv_avg_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_avg)
 
 
@@ -56,13 +56,13 @@ sst_k_avg = B_dot_A(betas['SST'], TFA_sk, 10)
 pv_k_avg  = B_dot_A(betas['PV'],  TFA_pk, 10)
 
 paths = {'mtx': 'Out/sst_avg_ko.mtx',
-'genes':     'Out/sst_avg_ko_genes.csv',
-'cells':     'Out/sst_avg_ko_cells.csv'}
+'genes':     'Out/sst_avg_ko_genes.tsv',
+'cells':     'Out/sst_avg_ko_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_k_avg)
 
 paths = {'mtx': 'Out/pv_avg_ko.mtx',
-'genes':     'Out/pv_avg_ko_genes.csv',
-'cells':     'Out/pv_avg_ko_cells.csv'}
+'genes':     'Out/pv_avg_ko_genes.tsv',
+'cells':     'Out/pv_avg_ko_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_k_avg)
 
 # ###################################################################################################
@@ -93,15 +93,15 @@ pv_transfac_avg  = B_dot_A(betas_transfac['PV' ], TFA_TRANSFAC_p, 10)
 sst_cells = list(sst_transfac_avg.columns.values)
 sst_genes = list(sst_transfac_avg.index)
 paths = {'mtx': 'Out/sst_transfac_avg.mtx',
-'genes':     'Out/sst_transfac_avg_genes.csv',
-'cells':     'Out/sst_transfac_avg_cells.csv'}
+'genes':     'Out/sst_transfac_avg_genes.tsv',
+'cells':     'Out/sst_transfac_avg_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_transfac_avg)
 
 pv_cells = list(pv_transfac_avg.columns.values)
 pv_genes = list(pv_transfac_avg.index)
 paths = {'mtx': 'Out/pv_transfac_avg.mtx',
-'genes':     'Out/pv_transfac_avg_genes.csv',
-'cells':     'Out/pv_transfac_avg_cells.csv'}
+'genes':     'Out/pv_transfac_avg_genes.tsv',
+'cells':     'Out/pv_transfac_avg_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_transfac_avg)
 
 # ###################################################################################################
@@ -121,13 +121,13 @@ sst_transfac_k_avg = B_dot_A(kbetas_transfac['SST'], TFA_TRANSFAC_sk, 10)
 pv_transfac_k_avg  = B_dot_A(kbetas_transfac['PV'],  TFA_TRANSFAC_pk, 10)
 
 paths = {'mtx': 'Out/sst_transfac_avg_ko.mtx',
-'genes':     'Out/sst_transfac_avg_ko_genes.csv',
-'cells':     'Out/sst_transfac_avg_ko_cells.csv'}
+'genes':     'Out/sst_transfac_avg_ko_genes.tsv',
+'cells':     'Out/sst_transfac_avg_ko_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_transfac_k_avg)
 
 paths = {'mtx': 'Out/pv_transfac_avg_ko.mtx',
-'genes':     'Out/pv_transfac_avg_ko_genes.csv',
-'cells':     'Out/pv_transfac_avg_ko_cells.csv'}
+'genes':     'Out/pv_transfac_avg_ko_genes.tsv',
+'cells':     'Out/pv_transfac_avg_ko_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_transfac_k_avg)
 
 # ###################################################################################################
@@ -156,15 +156,15 @@ pv_1lp_avg  = B_dot_A(betas_1lp['PV'], TFA_1lp_p, 10)
 sst_cells = list(sst_1lp_avg.columns.values)
 sst_genes = list(sst_1lp_avg.index)
 paths = {'mtx': 'Out/sst_1lp_avg.mtx',
-'genes':     'Out/sst_1lp_avg_genes.csv',
-'cells':     'Out/sst_1lp_avg_cells.csv'}
+'genes':     'Out/sst_1lp_avg_genes.tsv',
+'cells':     'Out/sst_1lp_avg_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_1lp_avg)
 
 pv_cells = list(pv_1lp_avg.columns.values)
 pv_genes = list(pv_1lp_avg.index)
 paths = {'mtx': 'Out/pv_1lp_avg.mtx',
-'genes':     'Out/pv_1lp_avg_genes.csv',
-'cells':     'Out/pv_1lp_avg_cells.csv'}
+'genes':     'Out/pv_1lp_avg_genes.tsv',
+'cells':     'Out/pv_1lp_avg_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_1lp_avg)
 
 # ###################################################################################################
@@ -187,17 +187,38 @@ pv_1lp_k_avg  = B_dot_A(betas_1lp['PV'], TFA_1lp_pk, 10)
 sst_cells = list(sst_1lp_k_avg.columns.values)
 sst_genes = list(sst_1lp_k_avg.index)
 paths = {'mtx': 'Out/sst_1lp_avg.mtx',
-'genes':     'Out/sst_1lp_avg_genes.csv',
-'cells':     'Out/sst_1lp_avg_cells.csv'}
+'genes':     'Out/sst_1lp_avg_genes.tsv',
+'cells':     'Out/sst_1lp_avg_cells.tsv'}
 write_reconstructed_exp(sst_cells, sst_genes, paths, sst_1lp_k_avg)
 
 pv_cells = list(pv_1lp_k_avg.columns.values)
 pv_genes = list(pv_1lp_k_avg.index)
 paths = {'mtx': 'Out/pv_1lp_avg.mtx',
-'genes':     'Out/pv_1lp_avg_genes.csv',
-'cells':     'Out/pv_1lp_avg_cells.csv'}
+'genes':     'Out/pv_1lp_avg_genes.tsv',
+'cells':     'Out/pv_1lp_avg_cells.tsv'}
 write_reconstructed_exp(pv_cells, pv_genes, paths, pv_1lp_k_avg)
 
 # ###################################################################################################
 # ###################################################################################################
 # ###################################################################################################
+# Turn mtx into andata
+
+mtx = {}
+for x in glob.glob("Out/*.mtx"):
+    f = x.split('/')[-1].split('.')[0]
+    mtx[f] = pd.DataFrame(scio.mmread(x).todense())
+    mtx[f].columns = pd.read_table(x.replace('.mtx','_cells.tsv')).columns
+    mtx[f].index = pd.read_table(x.replace('.mtx','_genes.tsv')).columns
+
+adatas = {x: sc.AnnData(mtx[x].T) for x in mtx}
+for x in adatas:
+    adatas[x].obs['cardinal'] = x.split('_')[0].upper()
+
+rec = {}
+batches = ['P2_rWT_PV', 'P2_rWT_SST']
+rec['P2_rWT'] = adatas['pv_avg'].concatenate(adatas['sst_avg'],batch_categories=batches)
+rec['P2_rKO'] = adatas['pv_avg_ko'].concatenate(adatas['sst_avg_ko'], batch_categories=['P2_rKO_PV', 'P2_rKO_SST'])
+rec['P2_rTfacKO'] = adatas['pv_transfac_avg_ko'].concatenate(adatas['sst_transfac_avg_ko'], batch_categories=['P2_rTfacKO_PV', 'P2_rTfacKO_SST'])
+rec['P2_rTfacWT'] = adatas['pv_transfac_avg'].concatenate(adatas['sst_transfac_avg'], batch_categories=['P2_rTfacWT_PV', 'P2_rTfacWT_SST'])
+rec['P2_rT1lpWT'] = adatas['pv_1lp_avg'].concatenate(adatas['sst_1lp_avg'], batch_categories=['P2_r1lpWT_PV','P2_rT1lpWT_SST'])
+
