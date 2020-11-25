@@ -10,6 +10,7 @@ from scipy.sparse import isspmatrix
 from matplotlib.backends.backend_pdf import PdfPages
 
 
+
 def read_and_filter_grn(grn_path, var=0, ci=0, net=None):
     grn = pd.read_table(grn_path, header=0)
     grn['id'] = grn[['regulator', 'target']].apply(lambda x: '{}_{}'.format(x[0], x[1]), axis=1)
