@@ -6,4 +6,5 @@ Out/*
 /Out/*
 /ipynb/*.html
 /ipynb/*.json
-
+ipynb/*.html
+ipynb/*.json
