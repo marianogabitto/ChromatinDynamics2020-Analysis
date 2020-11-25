@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import cairocffi
 import scanpy as sc
+import scipy.io as scio
+import csv
+import scipy.sparse as sp
 from scipy.sparse import isspmatrix
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -170,3 +173,24 @@ def compute_edge_fractions(f_grns):
         rpl[t].index = out_reg_s[t].keys()
     
     return rpl
+
+
+def read_betas(t, cardinal_class, boot_path, n_boot=10):
+    return {'boot_{}'.format(b): pd.read_table(
+            boot_path.format(t=t, b=b),
+            index_col=0,header=0) for b in range(1, n_boot+1)}
+
+def B_dot_A(B, A, n_boot):
+    acc = B['boot_1']
+    for i in range(2, n_boot+1):
+        acc += B['boot_{}'.format(i)]
+    return acc.dot(A.T) / n_boot
+
+def write_reconstructed_exp(cell_names, gene_names, paths, exp):
+    scio.mmwrite(paths['mtx'], sp.csr_matrix(exp.to_numpy()))
+    with open(paths['genes'], 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter='\t')
+        spamwriter.writerow(gene_names)
+    with open(paths['cells'], 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter='\t')
+        spamwriter.writerow(cell_names)

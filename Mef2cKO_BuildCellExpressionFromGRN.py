@@ -4,62 +4,41 @@
 # Joint Work: Giuseppe Saldi and Mariano Gabitto
 # ###################################################################################################
 # ###################################################################################################
-import pandas as pd
-import scipy.io as scio
-import csv
-import scipy.sparse as sp
-
+from functions import *
 
 # ###################################################################################################
 # ###################################################################################################
 # Building Cells from Average Expression Data
 print("Building Cells from Average Expression Data")
-TFA = {'PV': pd.read_table('Data/nov11P2-PVP-mtl/2020-11-13_01-22-52/nov11-p2_PV_TFA.tsv', index_col=0, header=0),
-       'SST': pd.read_table('Data/nov11P2-PVP-mtl/2020-11-13_01-22-56/nov11-p2_SST_TFA.tsv', index_col=0, header=0)}
+TFA = {'PV': pd.read_table('Data/nov11P2-PVP-mtl/nov11-p2_PV_TFA.tsv', index_col=0, header=0),
+       'SST': pd.read_table('Data/nov11P2-PVP-mtl/nov11-p2_SST_TFA.tsv', index_col=0, header=0)}
 
-t = 0
-betas = {'PV': {'boot_{}'.format(b): pd.read_table(
-    'Data/nov11P2-PVP-mtl/nov11_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b), index_col=0,
-    header=0) for b in range(1, 11)}}
-t = 1
-betas['SST'] = {'boot_{}'.format(b): pd.read_table(
-    'Data/nov11P2-PVP-mtl/nov11_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b), index_col=0,
-    header=0) for b in range(1, 11)}
+betas ={}
+path = 'Data/nov11P2-PVP-mtl/nov11_betas_task_{t}_boot_{b}.tsv'
+betas['PV']  = read_betas(0, 'PV',  path, n_boot=10)
+betas['SST'] = read_betas(1, 'SST', path, n_boot=10)
 
 TFA_s = TFA['SST'][TFA['SST'].columns[TFA['SST'].columns.isin(betas['SST']['boot_1'].columns)]]
 TFA_p = TFA['PV'][TFA['PV'].columns[TFA['PV'].columns.isin(betas['PV']['boot_1'].columns)]]
 
-acc = betas['SST']['boot_1']
-for i in range(2, 11):
-    acc += betas['SST']['boot_{}'.format(i)]
-acc = acc.dot(TFA_s.T) / 10
-sst_avg = acc 
+sst_avg = B_dot_A(betas['SST'], TFA_s, 10)
+pv_avg = B_dot_A(betas['PV'], TFA_p, 10)
 
-acc = betas['PV']['boot_1']
-for i in range(2, 11):
-    acc += betas['PV']['boot_{}'.format(i)]
-acc = acc.dot(TFA_p.T) / 10
-pv_avg = acc 
+sst_cells = list(sst_avg.columns.values)
+sst_genes = list(sst_avg.index)
+paths = {'mtx': 'Out/sst_avg.mtx',
+'genes':     'Out/sst_avg_genes.csv',
+'cells':     'Out/sst_avg_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_avg)
 
-sst_cells_names = list(sst_avg.columns.values.tolist())
-sst_cells_genes = list(sst_avg.index)
-pv_cells_names = list(pv_avg.columns.values.tolist())
-pv_cells_genes = list(pv_avg.index)
+pv_cells = list(pv_avg.columns.values)
+pv_genes = list(pv_avg.index)
+paths = {'mtx': 'Out/pv_avg.mtx',
+'genes':     'Out/pv_avg_genes.csv',
+'cells':     'Out/pv_avg_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_avg)
 
-scio.mmwrite("Out/pv_avg.mtx", sp.csr_matrix(pv_avg.to_numpy()))
-scio.mmwrite("Out/sst_avg.mtx", sp.csr_matrix(sst_avg.to_numpy()))
-with open('Out/sst_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_cells_genes)
-with open('Out/sst_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_cells_names)
-with open('Out/pv_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_cells_genes)
-with open('Out/pv_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_cells_names)
+
 # ###################################################################################################
 # ###################################################################################################
 
@@ -73,35 +52,19 @@ TFA_pk = TFA_p.copy()
 TFA_sk.loc[:, 'Mef2c'] = 0
 TFA_pk.loc[:, 'Mef2c'] = 0
 
-acc = betas['SST']['boot_1']
-for i in range(2, 11):
-    acc += betas['SST']['boot_{}'.format(i)]
-acc = acc.dot(TFA_sk.T) / 10
-sst_k_avg = acc 
+sst_k_avg = B_dot_A(betas['SST'], TFA_sk, 10)
+pv_k_avg  = B_dot_A(betas['PV'],  TFA_pk, 10)
 
-acc = betas['PV']['boot_1']
-for i in range(2, 11):
-    acc += betas['PV']['boot_{}'.format(i)]
-acc = acc.dot(TFA_pk.T) / 10
-pv_k_avg = acc 
+paths = {'mtx': 'Out/sst_avg_ko.mtx',
+'genes':     'Out/sst_avg_ko_genes.csv',
+'cells':     'Out/sst_avg_ko_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_k_avg)
 
-pv_cells_names = list(pv_k_avg.columns.values.tolist())
-pv_cells_genes = list(pv_k_avg.index)
+paths = {'mtx': 'Out/pv_avg_ko.mtx',
+'genes':     'Out/pv_avg_ko_genes.csv',
+'cells':     'Out/pv_avg_ko_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_k_avg)
 
-scio.mmwrite("Out/pv_avg_ko.mtx", sp.csr_matrix(pv_k_avg.to_numpy()))
-scio.mmwrite("Out/sst_avg_ko.mtx", sp.csr_matrix(sst_k_avg.to_numpy()))
-with open('Out/sst_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_cells_genes)
-with open('Out/sst_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_cells_names)
-with open('Out/pv_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_cells_genes)
-with open('Out/pv_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_cells_names)
 # ###################################################################################################
 # ###################################################################################################
 # ###################################################################################################
@@ -111,59 +74,36 @@ with open('Out/pv_avg_ko_cells.csv', 'w', newline='') as csvfile:
 # ###################################################################################################
 # Building Cells from Average Expression Data TRANSFAC
 print("Building Cells from Average Expression Data TRANSFAC")
-TFA_TRANSFAC = {'PV': pd.read_table('Data/nov12_P2-tfac-mtl/2020-11-13_01-51-36/nov12-p2tfac_PV_TFA.tsv', index_col=0,
+TFA_TRANSFAC = {'PV': pd.read_table('Data/nov12_P2-tfac-mtl/nov12-p2tfac_PV_TFA.tsv', index_col=0,
                                     header=0),
-                'SST': pd.read_table('Data/nov12_P2-tfac-mtl/2020-11-13_01-51-42/nov12-p2tfac_SST_TFA.tsv',
+                'SST': pd.read_table('Data/nov12_P2-tfac-mtl/nov12-p2tfac_SST_TFA.tsv',
                                      index_col=0, header=0)}
 
-t = 0
-betas_transfac = {'PV': {'boot_{}'.format(b): pd.read_table(
-    'Data/nov12_P2-tfac-mtl/nov12_itfac_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b),
-    index_col=0, header=0) for b in range(1, 11)}}
-t = 1
-betas_transfac['SST'] = {'boot_{}'.format(b): pd.read_table(
-    'Data/nov12_P2-tfac-mtl/nov12_itfac_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b),
-    index_col=0, header=0) for b in range(1, 11)}
+betas_transfac ={}
+path = 'Data/nov12_P2-tfac-mtl/nov12_itfac_betas_task_{t}_boot_{b}.tsv'
+betas_transfac['PV']  = read_betas(0, 'PV', path, n_boot=10)
+betas_transfac['SST'] = read_betas(1, 'SST', path, n_boot=10)
 
-TFA_TRANSFAC_s = TFA_TRANSFAC['SST'][
-    TFA_TRANSFAC['SST'].columns[TFA_TRANSFAC['SST'].columns.isin(betas_transfac['SST']['boot_1'].columns)]]
-sst_transfac_avg = (betas_transfac['SST']['boot_1'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_2'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_3'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_4'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_5'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_6'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_7'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_8'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_9'].dot(TFA_TRANSFAC_s.T) +
-                    betas_transfac['SST']['boot_10'].dot(TFA_TRANSFAC_s.T)) / 10
-TFA_TRANSFAC_p = TFA_TRANSFAC['PV'][
-    TFA_TRANSFAC['PV'].columns[TFA_TRANSFAC['PV'].columns.isin(betas_transfac['PV']['boot_1'].columns)]]
-pv_transfac_avg = (betas_transfac['PV']['boot_1'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_2'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_3'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_4'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_5'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_6'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_7'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_8'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_9'].dot(TFA_TRANSFAC_p.T) +
-                   betas_transfac['PV']['boot_10'].dot(TFA_TRANSFAC_p.T)) / 10
+TFA_TRANSFAC_s = TFA_TRANSFAC['SST'][TFA_TRANSFAC['SST'].columns[TFA_TRANSFAC['SST'].columns.isin(betas_transfac['SST']['boot_1'].columns)]]
+TFA_TRANSFAC_p = TFA_TRANSFAC['PV' ][TFA_TRANSFAC['PV' ].columns[TFA_TRANSFAC['PV' ].columns.isin(betas_transfac['PV' ]['boot_1'].columns)]]
 
-scio.mmwrite("Out/pv_transfac_avg.mtx", sp.csr_matrix(pv_transfac_avg.to_numpy()))
-scio.mmwrite("Out/sst_transfac_avg.mtx", sp.csr_matrix(sst_transfac_avg.to_numpy()))
-with open('Out/sst_transfac_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(sst_transfac_avg.index))
-with open('Out/sst_transfac_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(sst_transfac_avg.columns.values.tolist()))
-with open('Out/pv_transfac_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(pv_transfac_avg.index))
-with open('Out/pv_transfac_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(pv_transfac_avg.columns.values.tolist()))
+sst_transfac_avg = B_dot_A(betas_transfac['SST'], TFA_TRANSFAC_s, 10)
+pv_transfac_avg  = B_dot_A(betas_transfac['PV' ], TFA_TRANSFAC_p, 10)
+
+sst_cells = list(sst_transfac_avg.columns.values)
+sst_genes = list(sst_transfac_avg.index)
+paths = {'mtx': 'Out/sst_transfac_avg.mtx',
+'genes':     'Out/sst_transfac_avg_genes.csv',
+'cells':     'Out/sst_transfac_avg_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_transfac_avg)
+
+pv_cells = list(pv_transfac_avg.columns.values)
+pv_genes = list(pv_transfac_avg.index)
+paths = {'mtx': 'Out/pv_transfac_avg.mtx',
+'genes':     'Out/pv_transfac_avg_genes.csv',
+'cells':     'Out/pv_transfac_avg_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_transfac_avg)
+
 # ###################################################################################################
 # ###################################################################################################
 
@@ -177,44 +117,19 @@ TFA_TRANSFAC_sk.loc[:, 'Mef2c'] = 0
 TFA_TRANSFAC_pk.loc[:, 'Mef2c'] = 0
 
 kbetas_transfac = betas_transfac.copy()
-for ct in kbetas_transfac:
-    for boot in kbetas_transfac[ct]:
-        kbetas_transfac[ct][boot].loc['Mef2c'] = 0
-sst_transfac_k_avg = (kbetas_transfac['SST']['boot_1'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_2'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_3'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_4'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_5'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_6'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_7'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_8'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_9'].dot(TFA_TRANSFAC_sk.T) +
-                      kbetas_transfac['SST']['boot_10'].dot(TFA_TRANSFAC_sk.T)) / 10
-pv_transfac_k_avg = (kbetas_transfac['PV']['boot_1'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_2'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_3'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_4'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_5'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_6'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_7'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_8'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_9'].dot(TFA_TRANSFAC_pk.T) +
-                     kbetas_transfac['PV']['boot_10'].dot(TFA_TRANSFAC_pk.T)) / 10
+sst_transfac_k_avg = B_dot_A(kbetas_transfac['SST'], TFA_TRANSFAC_sk, 10)
+pv_transfac_k_avg  = B_dot_A(kbetas_transfac['PV'],  TFA_TRANSFAC_pk, 10)
 
-scio.mmwrite("Out/pv_transfac_avg_ko.mtx", sp.csr_matrix(pv_transfac_k_avg.to_numpy()))
-scio.mmwrite("Out/sst_transfac_avg_ko.mtx", sp.csr_matrix(sst_transfac_k_avg.to_numpy()))
-with open('Out/sst_transfac_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(sst_transfac_avg.index))
-with open('Out/sst_transfac_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(sst_transfac_avg.columns.values.tolist()))
-with open('Out/pv_transfac_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(pv_transfac_avg.index))
-with open('Out/pv_transfac_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(list(pv_transfac_avg.columns.values.tolist()))
+paths = {'mtx': 'Out/sst_transfac_avg_ko.mtx',
+'genes':     'Out/sst_transfac_avg_ko_genes.csv',
+'cells':     'Out/sst_transfac_avg_ko_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_transfac_k_avg)
+
+paths = {'mtx': 'Out/pv_transfac_avg_ko.mtx',
+'genes':     'Out/pv_transfac_avg_ko_genes.csv',
+'cells':     'Out/pv_transfac_avg_ko_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_transfac_k_avg)
+
 # ###################################################################################################
 # ###################################################################################################
 # ###################################################################################################
@@ -224,54 +139,34 @@ with open('Out/pv_transfac_avg_ko_cells.csv', 'w', newline='') as csvfile:
 # Building Cells from Average Expression Data
 # NO FTT NORMALIZATION, 1LOGP
 print("Building Cells from Average Expression Data. No FTT Norm.")
-TFA_1lp = {'PV': pd.read_table('Data/nov16P2-PVP-noftt-mtl/2020-11-16_06-44-41/nov15-p2_PV_TFA.tsv', index_col=0,
-                               header=0),
-           'SST': pd.read_table('Data/nov16P2-PVP-noftt-mtl/2020-11-16_06-44-44/nov15-p2_SST_TFA.tsv', index_col=0,
-                                header=0)}
+TFA_1lp = {'PV': pd.read_table('Data/nov16P2-PVP-noftt-mtl/nov15-p2_PV_TFA.tsv', index_col=0,header=0),
+           'SST': pd.read_table('Data/nov16P2-PVP-noftt-mtl/nov15-p2_SST_TFA.tsv', index_col=0,header=0)}
 
-t = 0
-betas_1lp = {'PV': {'boot_{}'.format(b): pd.read_table(
-    'Data/nov16P2-PVP-noftt-mtl/nov15-noftt_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b), index_col=0,
-    header=0) for b in range(1, 11)}}
-t = 1
-betas_1lp['SST'] = {'boot_{}'.format(b): pd.read_table(
-    'Data/nov16P2-PVP-noftt-mtl/nov15-noftt_betas_task_{t}_boot_{b}.tsv'.format(t=t, b=b), index_col=0,
-    header=0) for b in range(1, 11)}
+betas_1lp = {}
+path = 'Data/nov16P2-PVP-noftt-mtl/nov15-noftt_betas_task_{t}_boot_{b}.tsv'
+betas_1lp['PV']  = read_betas(0, 'PV',  path, n_boot=10)
+betas_1lp['SST'] = read_betas(1, 'SST', path, n_boot=10)
 
 TFA_1lp_s = TFA_1lp['SST'][TFA_1lp['SST'].columns[TFA_1lp['SST'].columns.isin(betas_1lp['SST']['boot_1'].columns)]]
 TFA_1lp_p = TFA_1lp['PV'][TFA_1lp['PV'].columns[TFA_1lp['PV'].columns.isin(betas_1lp['PV']['boot_1'].columns)]]
 
-acc = betas_1lp['SST']['boot_1']
-for i in range(2, 11):
-    acc += betas_1lp['SST']['boot_{}'.format(i)]
-acc = acc.dot(TFA_1lp_s.T) / 10
-sst_1lp_avg = acc
+sst_1lp_avg = B_dot_A(betas_1lp['SST'], TFA_1lp_s, 10)
+pv_1lp_avg  = B_dot_A(betas_1lp['PV'], TFA_1lp_p, 10)
 
-acc = betas_1lp['PV']['boot_1']
-for i in range(2, 11):
-    acc += betas_1lp['PV']['boot_{}'.format(i)]
-acc = acc.dot(TFA_1lp_p.T) / 10
-pv_1lp_avg = acc
+sst_cells = list(sst_1lp_avg.columns.values)
+sst_genes = list(sst_1lp_avg.index)
+paths = {'mtx': 'Out/sst_1lp_avg.mtx',
+'genes':     'Out/sst_1lp_avg_genes.csv',
+'cells':     'Out/sst_1lp_avg_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_1lp_avg)
 
-sst_1lp_cells_names = list(sst_1lp_avg.columns.values.tolist())
-sst_1lp_cells_genes = list(sst_1lp_avg.index)
-pv_1lp_cells_names = list(pv_1lp_avg.columns.values.tolist())
-pv_1lp_cells_genes = list(pv_1lp_avg.index)
+pv_cells = list(pv_1lp_avg.columns.values)
+pv_genes = list(pv_1lp_avg.index)
+paths = {'mtx': 'Out/pv_1lp_avg.mtx',
+'genes':     'Out/pv_1lp_avg_genes.csv',
+'cells':     'Out/pv_1lp_avg_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_1lp_avg)
 
-scio.mmwrite("Out/pv_1lp_avg.mtx", sp.csr_matrix(pv_1lp_avg.to_numpy()))
-scio.mmwrite("Out/sst_1lp_avg.mtx", sp.csr_matrix(sst_1lp_avg.to_numpy()))
-with open('Out/sst_1lp_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_1lp_cells_genes)
-with open('Out/sst_1lp_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_1lp_cells_names)
-with open('Out/pv_1lp_avg_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_1lp_cells_genes)
-with open('Out/pv_1lp_avg_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_1lp_cells_names)
 # ###################################################################################################
 # ###################################################################################################
 
@@ -286,35 +181,23 @@ TFA_1lp_pk = TFA_1lp_p.copy()
 TFA_1lp_sk.loc[:, 'Mef2c'] = 0
 TFA_1lp_pk.loc[:, 'Mef2c'] = 0
 
-acc = betas_1lp['SST']['boot_1']
-for i in range(2, 11):
-    acc += betas_1lp['SST']['boot_{}'.format(i)]
-acc = acc.dot(TFA_1lp_sk.T) / 10
-sst_1lp_k_avg = acc
+sst_1lp_k_avg = B_dot_A(betas_1lp['SST'], TFA_1lp_sk, 10)
+pv_1lp_k_avg  = B_dot_A(betas_1lp['PV'], TFA_1lp_pk, 10)
 
-acc = betas_1lp['PV']['boot_1']
-for i in range(2, 11):
-    acc += betas_1lp['PV']['boot_{}'.format(i)]
-acc = acc.dot(TFA_1lp_pk.T) / 10
-pv_1lp_k_avg = acc
+sst_cells = list(sst_1lp_k_avg.columns.values)
+sst_genes = list(sst_1lp_k_avg.index)
+paths = {'mtx': 'Out/sst_1lp_avg.mtx',
+'genes':     'Out/sst_1lp_avg_genes.csv',
+'cells':     'Out/sst_1lp_avg_cells.csv'}
+write_reconstructed_exp(sst_cells, sst_genes, paths, sst_1lp_k_avg)
 
-pv_1lp_cells_names = list(pv_1lp_k_avg.columns.values.tolist())
-pv_1lp_cells_genes = list(pv_1lp_k_avg.index)
+pv_cells = list(pv_1lp_k_avg.columns.values)
+pv_genes = list(pv_1lp_k_avg.index)
+paths = {'mtx': 'Out/pv_1lp_avg.mtx',
+'genes':     'Out/pv_1lp_avg_genes.csv',
+'cells':     'Out/pv_1lp_avg_cells.csv'}
+write_reconstructed_exp(pv_cells, pv_genes, paths, pv_1lp_k_avg)
 
-scio.mmwrite("Out/pv_1lp_avg_ko.mtx", sp.csr_matrix(pv_1lp_k_avg.to_numpy()))
-scio.mmwrite("Out/sst_1lp_avg_ko.mtx", sp.csr_matrix(sst_1lp_k_avg.to_numpy()))
-with open('Out/sst_1lp_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_1lp_cells_genes)
-with open('Out/sst_1lp_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(sst_1lp_cells_names)
-with open('Out/pv_1lp_avg_ko_genes.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_1lp_cells_genes)
-with open('Out/pv_1lp_avg_ko_cells.csv', 'w', newline='') as csvfile:
-    spamwriter = csv.writer(csvfile, delimiter='\t')
-    spamwriter.writerow(pv_1lp_cells_names)
 # ###################################################################################################
 # ###################################################################################################
 # ###################################################################################################
