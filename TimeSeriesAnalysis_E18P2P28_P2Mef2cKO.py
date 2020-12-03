@@ -245,6 +245,19 @@ ax2.set_title('{}'.format(t))
 plt.tight_layout()
 plt.savefig('panelG_unique_celltype_edges_for_non_specific_TFS.pdf')
 
+
+t = ['E18', 'P2', 'P28']
+tmp = {x: np.mean(rpl[x][rpl[x].index.isin(seltf[x])]) for x in t}
+tmp = (pd.DataFrame(tmp)*100).T
+fig, ax = plt.subplots(1, 1)
+title = 'Average proportion of unique edges for cell type non specific TFs'
+ax.set_title(title)
+plt.box(False)
+plt.tick_params(left=False, labelleft=False, bottom=False,labelbottom=False)
+table(ax,tmp,loc='center', colWidths=[0.2, 0.2, 0.2])
+plt.subplots_adjust(wspace=0.2, hspace=0.2)
+plt.savefig('panelG_stats.pdf')
+
 # ############################################################################################################
 # ############################################################################################################
 # ############################################################################################################
